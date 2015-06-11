@@ -1,0 +1,18 @@
+
+    public void bubblesort(ProgramRep[] inarray){ 
+        for(integer i1 = 0; i1 < inarray.size(); i1++)  { // check for alphabetical
+            for(integer i2 = i1; i2 < inarray.size(); i2++){ 
+                if(inarray[i1].program.name > inarray[i2].program.name)      { 
+                    swap(inarray, i1, i2);
+                }
+            }
+        }
+    }
+
+    private void swap(ProgramRep[] inArray, Integer i1, Integer i2) {
+        ProgramRep tmp;
+  
+        tmp = inarray[i1];
+        inarray[i1] = inArray[i2];
+        inArray[i2] = tmp;
+    }

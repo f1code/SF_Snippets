@@ -1,0 +1,56 @@
+
+    public static void sendNotification(String objectId, String templateName, String[] recipients){
+        // note that we cannot use MassEmailMessage with user targets, we have to use SingleEmailMessage AND it only works with a VF template
+        String templateId = getTemplateId(templateName);
+        String oweaId = getOrgWideEmailAddressId();
+        List<Messaging.SingleEmailMessage> emails = new List<Messaging.SingleEmailMessage>();
+        for(String recipientId: recipients){
+            if(recipientId <> null && recipientId <> ''){
+                emails.add(createSingleEmail(recipientId, objectId, templateId, oweaId));               
+            }
+        }       
+        if(emails.size() == 0)
+            return;
+        
+        if(Test.isRunningTest()){
+            lastNotificationSent = emails;
+            notificationCount += emails.size();
+        }
+        Messaging.sendEmail(emails);
+    }       
+    
+    // reference to the last notification batch that was sent - used in unit tests ONLY
+    public static Messaging.SingleEmailMessage[] lastNotificationSent;
+    // total number of notifications that were sent (i.e. sum of count of emails in each batch)
+    public static Integer notificationCount = 0;    
+    
+    private static String getOrgWideEmailAddressId(){
+        //OrgWideEmailAddress[] owea = [select Id from OrgWideEmailAddress where Address = 'noreply_paforce@cargill.com'];
+        //if(owea.size() > 0){
+            // if the address cannot be verified, comment out the next line to avoid setting the From
+         //   return owea.get(0).Id;
+        //}
+        return null;
+    }
+    
+    private static Messaging.SingleEmailMessage createSingleEmail(String recipientId, String objectId, String templateId, String oweaId){
+        Messaging.SingleEmailMessage email = new Messaging.SingleEmailMessage();
+        email.setTargetObjectId(recipientId);
+        email.setWhatId(objectId);
+        email.setSaveAsActivity(false); 
+        email.setTemplateId(templateId);
+        if(oweaId != null){                    
+            email.setOrgWideEmailAddressId(oweaId);
+        }
+        return email;
+    }
+        
+    private static String getTemplateId(String templateName){
+        String templateId;
+        try {
+            templateId = [select id, name from EmailTemplate where developername = :templateName].id;           
+        } catch(Exception x){
+            throw new CTSEMEA_Exception('Unable to locate template named ' + templateName + ': ' + x.getMessage());
+        }
+        return templateId;
+    }
