@@ -1,6 +1,31 @@
 // Snippets for helping manipulate / retrieve users inside of unit tests
 // These are specific to hard-coded profile / BU so they need to be adapted as needed
 
+    /**
+     * Rather than trying to find an existing CKS user we can test with, we create one on the fly.
+     * This must be run from priviledged code (i.e. not within a System.runAs block), but  it is more robust
+     * as it does not depend on existing metadata.
+     */
+    private static User insertTestUser() {
+        String profileId = [select Id from Profile where Name=:SALES_USER_PROFILE].Id;
+        String rnd = String.valueOf(Math.random()).Substring(3, 6);
+        User user=new User(FirstName='Test',
+                               LastName='AghoUser',
+                               UserName='testOpp' + rnd + '@cargill.com',
+                               Email='testOpp' + rnd + '@cargill.com',
+                               Alias=rnd,
+                               CommunityNickname=rnd,
+                               ProfileId=profileId,
+                               TimeZoneSidKey='America/Chicago',
+                               LocaleSidKey='en_US',
+                               EmailEncodingKey='ISO-8859-1',
+                               LanguageLocaleKey='en_US',
+                               Business_Unit__c=BU,
+                               Country='UK');
+         insert user;
+         return user;
+    }
+    
 /**
 	 * Retrieve a random standard user in the CTSEMEA BU
 	 */
