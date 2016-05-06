@@ -1,0 +1,614 @@
+<!--   
+Copyright (c) 2015, Interlinx Associates, LLC
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, 
+are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright notice, 
+    this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright notice, 
+    this list of conditions and the following disclaimer in the documentation 
+    and/or other materials provided with the distribution.
+    * Neither the name of Interlinx Associates, LLC nor the names of its contributors 
+    may be used to endorse or promote products derived from this software 
+    without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED 
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE 
+OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
+OF THE POSSIBILITY OF SUCH DAMAGE.
+__________________________________________________________________________________
+Interlinx Associates, LLC, 7801 E Bush Lake Rd, Suite 230, Bloomington, MN.  
+Main Phone: (952) 829-0911
+Web: http://interlinxassociates.com
+eMail: info@interlinxassociates.com
+-->
+<apex:page standardController="Group__c" extensions="GroupControllerExt" action="{!initAddContacts}" sidebar="false">
+    <apex:includeScript value="../../soap/ajax/36.0/connection.js"  />
+    <apex:includeScript value="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.5/angular.js" />
+    <apex:includeScript value="https://cdnjs.cloudflare.com/ajax/libs/pikaday/1.4.0/pikaday.min.js" />
+    <apex:stylesheet value="https://cdnjs.cloudflare.com/ajax/libs/pikaday/1.4.0/css/pikaday.min.css" />
+    
+    <script type='text/javascript'>
+        function noenter(ev)  {
+            if (window.event && window.event.keyCode == 13 || ev.which == 13) {
+                return false;
+            }
+            else {
+                return true;
+            }
+        }
+        sforce.connection.sessionId = "{!GETSESSIONID()}";
+
+    	angular.module('contactSearchApp', [])
+        	.controller('contactSearchController', function($scope) { 
+                $scope.query = {
+                    fields: [],
+                    tags: [], 
+                    groupNameFilter: ''
+                };
+                $scope.hasQuery = function() {
+                    // OK if we have either tag or field
+                    return $scope.query.fields.filter(function(q) { return q.field && q.value }).length ||
+                        $scope.query.tags.length ||
+                        $scope.query.groupNameFilter;
+                }
+                $scope.doSearch = function(e) {
+                    e.preventDefault();
+                    var serialized = JSON.stringify($scope.query);
+                    searchContactsAction(serialized);
+                }
+            })
+        ////////////////////////// Search By Field
+        	.controller('contactSearchByFieldsController', function($scope, layoutService) {
+                $scope.layout = null;
+                    
+                // add a new field to query
+                function newField() {
+                    $scope.query.fields.push({
+                        field: null,
+                        operator: '=',
+                        value: ''
+                    });
+                }
+                
+                function removeField(fieldIndex) {
+                    $scope.query.fields.splice(fieldIndex, 1);
+				}
+                $scope.removeField = removeField;
+                
+                
+                $scope.$on('field-value-changed', function(fieldIndex, value) {
+                    console.log('field value changed, in parent', $scope.query);
+                    if($scope.query.fields.filter(function(f) { return !f.value }).length == 0)
+                        // no empty field
+                    	newField();
+				});
+                
+                layoutService.getContactFields().then(function(layout) {
+                    $scope.layout = layout;
+                    newField();
+				});
+            })
+        	.controller('searchFieldController', function($scope, $log) {
+                // Controller instance for each search field
+                $scope.availableOperators = getOperators();                        
+                
+                function getOperators() {       
+                    var ff = $scope.field.field;                    
+                    ops = [
+                        { name: '=', label: 'Equals To' },
+                        { name: '<>', label: 'Not Equals To' }
+                    ];
+                    if(!ff || !ff.type)
+                        return ops;
+                    switch(ff.type) {
+                        case 'string': case 'textarea': case 'phone':
+                            ops = ops.concat([
+                                {name: 'starts_with', label: 'Starts With'},
+                                {name: 'ends_with', label: 'Ends With'},
+                                {name: 'contains', label: 'Contains'},
+                                {name: 'does_not_contain', label: 'Does Not Contain'}                                
+                            ]);
+                            break;
+                        case 'boolean':
+                            // we just need equals to (really we just need one dropdown but that's a bit more annoying to do)
+                            ops = [ops[0]];
+                            break;
+                        case 'datetime':
+                        case 'date':
+                            ops = ops.concat([
+                                {name: '>', label: 'After'},
+                                {name: '<', label: 'Before'},
+                            ]);
+                            break;
+                        case 'picklist':
+                                // just keep the defaults for picklists
+                            break;
+                        case 'multipicklist':
+                            ops = [
+                                {name: 'contains', label: 'Contains'},
+                                {name: 'does_not_contain', label: 'Does Not Contain'}
+                            ];
+                            break;                                             
+                        default: 
+                            $log.warn('getOperators: unhandled field type', ff);
+                            break;
+                    }
+                    return ops;
+				};
+                
+                $scope.onFieldChanged = function(oldType) {
+                    // if they are changing to a different type field we need to rebuild the UI for it
+                    if(oldType != $scope.field.field.type) 
+                        resetField();
+                }
+                
+                function resetField() {
+                    $scope.availableOperators = getOperators();
+                    $scope.field.operator = $scope.availableOperators[0].name;
+                    $scope.field.value = '';
+                    if($scope.field.field)
+                    	$scope.$broadcast('field-type-changed', $scope.field.field);  
+                };                
+                
+                $scope.$on('field-value-changed', function(evt, value) {
+                    console.log('field-value-changed');
+                    $scope.field.value = value;
+                });
+			})        
+        	.directive('searchField', function($log, $rootScope) {
+                // renderer for a single field. 
+                // This needs to display the appropriate UI for the field type.
+                // when the value is changed we will emit a field-value-changed event
+                function link(scope, element, attrs) {
+                    scope.$on('field-type-changed', function(evt, field) {
+                        buildFieldUI(field, element, function(newValue) {
+                            $rootScope.$apply(function() {
+                            	scope.$emit('field-value-changed', newValue);
+                            });
+                        });
+					});
+                }
+                
+                function buildFieldUI(field, element, onChange) {
+                    element.empty();
+                    switch(field.type) {
+                        case 'string': case 'textarea': case 'phone':
+                            buildTextbox(element, onChange);
+                        	break;
+                        case 'datetime':
+                        case 'date':
+                            buildDatePicker(field.type, element, onChange);
+                            break;
+                        case 'boolean':
+                            buildPicklist([
+                                {label: 'True', value: 'true'}, {label: 'False', value: 'false'}
+                            ], element, onChange);
+                            break;
+                        case 'picklist': case 'multipicklist':
+                            buildPicklist(field.picklistValues, element, onChange);
+                            break;
+                        default:
+                            $log.warn('buildFieldUI: unhandled field type', field.type);
+                    }
+				}
+                
+                function buildTextbox(element, onChange) {
+                    element.append('<input type="text" class="sel-field-text"/>')
+                    	.on('keyup', function(e) {
+                            onChange(e.target.value);
+                        });
+                }
+                
+                function buildPicklist(options, element, onChange) {
+                    var options = options.map(function(o) {
+                        return '<option value="' + escapeHtml(o.value) + '">' + escapeHtml(o.label) + '</option>';
+                    }).join('');
+                    element.append('<select><option value="" selected disabled>-- select one --</option>' + options + '</select>')
+                    	.on('change', function(e) {
+                            onChange(e.target.value);
+                        });
+                }
+                
+                function buildDatePicker(fieldType, element, onChange) {
+                    var input = document.createElement('input');
+                    input.type = 'text';
+                    element.append(input);
+                    var picker = new Pikaday({
+                        onSelect: function(date) {
+                            onChange(date ? formatDate(date, fieldType) : null);
+                        },
+                        field: input
+                    });
+                    //element.append(picker.el);
+                }
+                
+                return {
+                    link: link
+                };
+            })
+        	.factory('layoutService', function layoutServiceFactory($q) {
+                // provide layout info retrieved from the Salesforce metadata api
+                return {
+                    getContactFields: function () {
+                        // XXX should we only return fields that are on the edit layout?  This would be possible via describeLayout.
+                        return $q(function(resolve, reject) {
+                            sforce.connection.describeSObject("Contact", function(contactObject) {
+                                //sforce.connection.describeLayout("Contact", function(layout) {
+                                    var result = contactObject.fields
+                                    .filter(function(f) { return f.filterable && f.name != 'Id' })
+                                    .map(function(field) {
+                                        if(field.type == 'reference') {
+                                            // for references it does not make sense to search by id, so we'll 
+                                            // automatically do the name instead
+                                            return {
+                                                label: field.label.replace(/ +ID$/, ''),
+                                                name: field.relationshipName + '.Name', 
+                                                type: 'string'
+                                            };
+                                        }
+                                        switch(field.type) {
+                                            case 'string': case 'phone': case 'date':
+                                            case 'boolean': case 'multipicklist': case 'picklist': case 'datetime':
+                                                break;
+                                            default:
+                                                // other field types: textarea, email, number, etc - we'll just handle them as string by default
+                                                console.log('unknown field type: ' + field.type);
+                                                field.type = 'string';
+                                                break;
+										}
+                                            
+                                        return {
+                                            label: field.label,
+                                            name: field.name,
+                                            // reference, string, textarea, datetime, boolean, picklist, multipicklist
+                                            type: field.type,                                            
+                                            // do we need to filter by rec type??  But how would we know rec type
+                                            picklistValues: sortByLabel(field.picklistValues)  // label, value
+                                        };
+                                    });    
+                                    sortByLabel(result);                                	
+									resolve(result);
+                                //});
+							});
+                        });
+                    }
+                };
+            })
+        ////////////////////////// Search By Tag        
+    		.controller('contactSearchByTagsController', function($scope, tagPicklist) {
+                $scope.availableTags = [];
+                $scope.selection = '';
+                
+                $scope.selectTag = function() {
+                    if($scope.selection) {
+                		$scope.query.tags.push($scope.selection);
+						$scope.availableTags = $scope.availableTags.filter(function(t) { return t != $scope.selection });
+						$scope.selection = '';                        
+                    }
+                };
+                
+                $scope.removeTag = function(tag) {
+                    $scope.query.tags = $scope.query.tags.filter(function(t) { return t != tag });
+                    $scope.availableTags.push(tag);
+                }
+                
+                tagPicklist().then(function(vals) {
+                    $scope.availableTags = vals;
+                });
+            }) 
+        	.factory('tagPicklist', function tagPicklistFactory($q) {
+                return function() {
+                    return $q(function(resolve, reject) {
+                        sforce.connection.describeSObject("Tags__c", function(tagsObject) {
+                            var result = tagsObject.fields
+                            	.filter(function(f) { return f.name == 'Tag__c' })
+                            	.map(function(f) { return f.picklistValues });
+                            result = result[0].map(function(pkl) { return pkl.value });
+                            result.sort();
+                            resolve(result);
+                        }) 
+                    });
+                }
+            });
+        
+        
+        function sortByLabel(result) {
+            if(result) {
+                result.sort(function(a, b) {
+                    if(a.label < b.label)
+                        return -1;
+                    if(a.label > b.label)
+                        return 1;
+                    return 0;
+                });
+            }
+            return result;
+        }
+        
+        function escapeHtml(string) {
+            var entityMap = {
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': '&quot;',
+                "'": '&#39;',
+                "/": '&#x2F;'
+            };
+            return String(string).replace(/[&<>"'\/]/g, function (s) {
+                return entityMap[s];
+            });
+        }
+        
+        // format date for transmission to backend (US format)
+        function formatDate(date, fieldType) {
+            if(!date) 
+                return '';
+            var fmt = date.toISOString();
+            if(fieldType == 'datetime')
+                return fmt.replace(/\.\d+/, '');
+            return fmt.replace(/T.*/, '');
+        }
+    	
+    // called from search action status to temporarily hide the search results while they are being reloaded
+    	function hideSearchResults() {
+        	var tbody = document.querySelector('table[id$=tblContacts] tbody');
+            if(tbody)
+                tbody.style.display = 'none';
+        }
+   	
+    </script>
+    <style>
+        .contact-search * {
+        	box-sizing: border-box;
+        }
+        .contact-search .btn-remove {
+        	font-size: 150%;
+    		vertical-align: middle;
+        	font-weight: bold;
+    		cursor: pointer;
+    		text-decoration: none;
+        }
+        .contact-search h3 {
+        	display: block;
+        	margin-bottom: 10px;
+        	text-indent: 5px;
+        }
+        .contact-search.ng-hide {
+        	display: none;
+        }
+        .contact-search {
+        	max-width: 1024px;
+        }
+        .contact-search-fields {
+        	float: left;
+        	width: 60%;
+        	padding-right: 20px;
+        }
+        .contact-search-tags {        	
+        	float: left;
+        	width: 20%;
+        }        
+        .contact-search-groupname {        	
+        	float: left;
+        	width: 20%;
+        }
+        .contact-search-groupname input {
+        	width: 100%;
+        }
+        .contact-search-buttons {
+        	clear: both;
+        	padding: 15px 30px 10px 0;
+        	width: 100%;
+        	text-align: right;
+        }
+        .btn:disabled {
+        	opacity: 0.6;
+        	cursor: not-allowed;
+        }
+        
+        br {
+        	clear: both;
+        }
+        
+        /* 2 column layout for smaller screens */
+        @media only screen and (max-width: 1024px) {            
+            .contact-search-fields {
+                width: 100%;
+        		margin-bottom: 15px;
+            }
+            .contact-search-tags {        	
+                width: 50%;
+            }        
+            .contact-search-groupname {        	
+                width: 50%;
+            }
+        }
+        
+@keyframes circles-loader {
+  0% {
+    transform: rotate(-720deg);
+  }
+  50% {
+    transform: rotate(720deg);
+  }
+}
+.spinner-container .spinner {
+    position: relative;
+    text-indent: -9999px;
+    display: inline-block;
+    width: 25px;
+    height: 25px;
+    background: rgba(204, 204, 204, 0.9);
+    border-radius: 100%;
+    animation: circles-loader 3s infinite ease-in-out;
+    transform-origin: 50% 100%;
+}
+    .spinner-container .spinner::before {
+      background: rgba(204, 204, 204, 0.6);
+      border-radius: 100%;
+      content: '';
+      position: absolute;
+      width: 25px;
+      height: 25px;
+      top: 18.75px;
+      left: -10.82532px;
+    }
+    .spinner-container .spinner::after {
+      background: rgba(204, 204, 204, 0.4);
+      border-radius: 100%;
+      content: '';
+      position: absolute;
+      width: 25px;
+      height: 25px;
+      top: 18.75px;
+      left: 10.82532px;
+    }
+
+.spinner-container {
+    min-height: 100px;
+    width: 100%;
+    text-align: center;
+}
+
+.spinner-text {
+    display: block;
+}
+    </style>
+    <apex:form >
+        <apex:actionFunction action="{!searchContacts}" name="searchContactsAction" rerender="tblContacts, messages" status="searchStatus">
+            <apex:param name="query" assignTo="{!queryJson}" value="" />
+        </apex:actionFunction>
+        
+    <apex:pageMessages id="messages"></apex:pageMessages>
+     <apex:pageblock id="MainTitle" title="Add Contacts [Count = {!contactCount}]">
+        <apex:pageblockbuttons >
+            <apex:commandbutton action="{!addContacts}" value="Add Selected" />
+            <apex:commandbutton action="{!cancel}" value="Cancel" />
+        </apex:pageblockbuttons>
+     <br/>
+ 	<b>Select Contacts</b>   
+        <div class='contact-search ng-hide' ng-app='contactSearchApp' ng-controller='contactSearchController' ng-show='true'>
+            <div class='contact-search-fields' ng-controller='contactSearchByFieldsController' >               
+            <!-- TODO hidden field for capturing the query -->
+                <h3>
+                    Search By Field
+                </h3>
+                <div ng-repeat='field in query.fields' ng-controller='searchFieldController'>
+                    <!-- used to select the criteria field -->
+                    <select class='sel-field' ng-model='field.field' ng-options='f as f.label for f in layout track by f.name' ng-change='onFieldChanged("{{ field.field.type }}")'>                    
+                        <!-- can't get default option unfortunately because VF strips empty value string -->
+                        <option value="">--- Select Field ---</option>
+                    </select>
+                    <select class='sel-operator' ng-model='field.operator' ng-show='field.field'>
+                        <option ng-repeat="op in availableOperators" value="{{op.name}}" >{{op.label}}</option>
+                    </select>
+                    <search-field field-type='{{ field.field.type }}' ng-show='field.field'>
+                    </search-field>
+                    <!-- button to remove this field from criteria, shown only if there is a value -->
+                    <a class='btn-remove' ng-show='field.value' ng-click='removeField($index)'>&times;</a>                    
+                </div>                    
+            </div>
+            <div class='contact-search-tags' ng-controller='contactSearchByTagsController'>
+                <h3>
+                    Search By Tag
+                </h3>
+                <div ng-repeat='tag in query.tags'>
+                    {{ tag }}
+                    <a class='btn-remove' ng-click='removeTag(tag)'>&times;</a>                    
+                </div>
+                <select class='sel-tag' ng-model='selection' ng-change='selectTag()' ng-options='tag for tag in availableTags'>                    
+                    <option value="">--- Select Tag ---</option>
+                </select>
+            </div>
+            <div class='contact-search-groupname'>
+                <h3>
+                    Search By Group
+                </h3>
+                <input type='text' placeholder='Enter existing group name' ng-model='query.groupNameFilter' />
+            </div>
+            <div class='contact-search-buttons'>
+                <input type='submit' class='btn' value='Search' ng-disabled='!hasQuery()' ng-click='doSearch($event)'  />                    
+            </div>            
+         </div>
+             
+<!--        <br/><br/>Note: To filter on Role, please enter the entire value of one or more roles.  (e.g. Membership - Primary or Membership - Primary; Volunteer)  If more than one role is entered, only Contacts that have both roles will be returned.  -->
+        <br/><br/><apex:commandButton value="Select All" action="{!selectAllContacts}" rerender="tblContacts, messages" status="searchStatus"/>
+        <apex:commandButton value="Select None" action="{!selectNoneContacts}"  rerender="tblContacts, messages" status="searchStatus"/>
+        <apex:pageBlockTable value="{!contactsToSelect}" var="item" id="tblContacts">
+<!--                <apex:column style="width:100px">
+                 <apex:commandButton value="Select" action="{!selectProduct}" rerender="productNameFilter">
+                    <apex:param name="productToAdd" value="{!item.ProductId}" assignTo="{!productToAdd}" />
+                </apex:commandButton>
+                </apex:column>  -->
+                <apex:column headerValue="Select" style="width:100px">
+                    <apex:inputCheckbox value="{!item.Selected}" />
+                </apex:column>
+                <apex:column headerValue="Name">
+                    <apex:outputfield value="{!item.contact.Name}" />
+                </apex:column>
+                <apex:column headerValue="Email">
+                    <apex:outputfield value="{!item.Contact.Email}" />
+                </apex:column>
+                <apex:column headerValue="Account">
+                    <apex:outputfield value="{!item.Contact.AccountId}" />
+                </apex:column>
+                <apex:column headerValue="Role">
+                    <apex:outputfield value="{!item.Contact.Role__c}" />
+                </apex:column>
+                <apex:column headerValue="Groups">
+                    <apex:outputtext value="{!item.groups}" />
+                </apex:column>
+        </apex:pageBlockTable> 
+        
+        <apex:actionStatus id="searchStatus" onstart="hideSearchResults()">
+            <apex:facet name="start">
+                <div class='spinner-container'>
+                    <div class='spinner'>                        
+                    </div>
+                    <span>Loading search - please wait...</span>
+                </div>
+            </apex:facet>
+        </apex:actionStatus>
+         
+        
+        
+        
+        
+        
+<!--        &nbsp;&nbsp;<apex:commandbutton action="{!search}" value="Search" /> 
+        <br/><br/><apex:commandButton value="Select All" action="{!selectAll}"/>
+        <apex:commandButton value="Select None" action="{!selectNone}"/>
+        <apex:pageBlockTable value="{!contactMembersToSelect}" var="item"> -->
+<!--                <apex:column style="width:100px">
+                 <apex:commandButton value="Select" action="{!selectProduct}" rerender="productNameFilter">
+                    <apex:param name="productToAdd" value="{!item.ProductId}" assignTo="{!productToAdd}" />
+                </apex:commandButton>
+                </apex:column>  -->
+<!--                <apex:column headerValue="Select" style="width:100px">
+                    <apex:inputCheckbox value="{!item.Selected}" />
+                </apex:column>
+                <apex:column headerValue="Name">
+                    <apex:outputfield value="{!item.member.Contact__c}" />
+                </apex:column>
+                <apex:column headerValue="Email">
+                    <apex:outputfield value="{!item.member.Contact__r.Email}" />
+                </apex:column>
+                <apex:column headerValue="Account">
+                    <apex:outputfield value="{!item.member.Contact__r.AccountId}" />
+                </apex:column>
+                <apex:column headerValue="Role">
+                    <apex:outputfield value="{!item.member.Contact__r.Role__c}" />
+                </apex:column>
+        </apex:pageBlockTable> -->
+    </apex:pageBlock>
+    </apex:form> 
+</apex:page>
