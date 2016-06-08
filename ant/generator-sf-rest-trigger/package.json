@@ -1,0 +1,16 @@
+{
+  "name": "generator-sf-rest-trigger",
+  "version": "1.0.0",
+  "description": "Generator for a set of Salesforce classes used so sync data to a REST API based on a trigger",
+  "files": [
+    "app"
+  ],
+  "keywords": [
+    "yeoman-generator"
+  ],
+  "dependencies": {
+    "yeoman-generator": "^0.23.3"
+  },
+  "author": "nicocrm",
+  "license": "ISC"
+}
