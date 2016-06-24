@@ -26,8 +26,6 @@ public virtual class OAuth2 {
  
         String response = makeAPICall(accessTokenUrl, body, 'POST', false);
  
-        System.debug('=========================== RESPONSE:'+response);
- 
         TokenResponse t = parseAccessToken(response);
         this.accessToken = t.access_token;
         this.refreshToken = t.refresh_token;        
@@ -46,9 +44,7 @@ public virtual class OAuth2 {
             '&grant_type=refresh_token';
  
         String response = makeAPICall(accessTokenUrl, body, 'POST', false);
- 
-        System.debug('=========================== RESPONSE:'+response);
- 
+          
         TokenResponse t = parseAccessToken(response);
         this.accessToken = t.access_token;
         this.refreshToken = t.refresh_token;        
@@ -82,7 +78,10 @@ public virtual class OAuth2 {
             req.setHeader('Authorization', 'Bearer ' + this.getAccessToken());
         }
         req.setMethod(method);
-        if(method == 'POST') {
+        if(method == 'POST') {  
+            if(body != null && body.startsWith('{')) {
+        		req.setHeader('Content-Type', 'application/json');
+            }
             req.setBody(body);
         } else {
             if(apiUrl.indexOf('?') > -1) {
@@ -92,9 +91,15 @@ public virtual class OAuth2 {
             }
             apiUrl += body;
         }
+        
+        System.debug('==== REQUEST = ' + body + ' , URL = ' + apiUrl + ', METHOD = ' + method);
+        
         req.setEndpoint(apiUrl);
         Http http = new Http();
         HTTPResponse res = http.send(req);
+        
+        System.debug('=========================== RESPONSE:'+res.getBody());
+        
         if(res.getStatusCode() >= 400) {
             throw new ApiException(res.getStatusCode(), res.getBody());
         }
