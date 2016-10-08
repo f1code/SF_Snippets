@@ -17,12 +17,10 @@ public class <%= name %>SyncBatch implements Database.Batchable<sObject>, Databa
     }
 
     public Database.QueryLocator start(Database.BatchableContext bc) {
-        return Database.getQueryLocator([select TravelFrom__c, LoadOutEndDate__c,
-                                         EventEndDate__c, WRAPEndDate__c,
-                                         TravelTo__c, LoadInStartDate__c,
-                                         PreProductionStartDate__c, EventStartDate__c,
-                                         StageName, Name, <%= name %><%= name %><%= entity %>_ID__c,
-                                         PG<%= name %><%= entity %>Code__c
+        // TODO: add other properties necessary to retrieve for the sync
+        return Database.getQueryLocator([select Id<% if (externalIdProperty) { 
+                                                    %>, <%= externalIdProperty %> <%  
+                                                } %>
                                          from <%= entity %>
                                          where Id in :entityIds]);
     }
