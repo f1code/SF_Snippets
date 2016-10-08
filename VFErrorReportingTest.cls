@@ -1,12 +1,13 @@
 @isTest
 public class VFErrorReportingTest {
     static testMethod void testReportDmlException() {
+		Savepoint sp = Database.setSavepoint();
         try {
             Account a = new Account();
             insert a;
             System.assert(false, 'Should have thrown an Exception');
         } catch(DmlException x) {
-            VFErrorReporting.reportException(x);
+            VFErrorReporting.reportException(x, sp);
         }
     }
     
@@ -17,5 +18,5 @@ public class VFErrorReportingTest {
         } catch(Exception x) {
             VFErrorReporting.reportException(x);
         }
-    }
+    }        
 }
