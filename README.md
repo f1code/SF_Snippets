@@ -9,3 +9,7 @@ Send templated email to list of recipients.  Note that you can only use VF templ
 ## BubbleSort.txt
 
 Simple bubble sort template (copy paste and replace with your class and desired comparison logic)
+
+## VFErrorReporting
+
+Used to report exception in a VF page
