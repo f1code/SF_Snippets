@@ -11,7 +11,7 @@ public class VFErrorReporting {
      * @param sp - if provided, we'll roll back to it.  Pass null if not needed
      */
     public static PageReference reportException(Exception x, SavePoint sp) {
-        System.debug(LoggingLevel.WARN, 'Exception: ' + x.getTypeName() + ': ' + x.getMessage() + ' -- ' + x.getCause());
+        System.debug(LoggingLevel.WARN, 'Exception: ' + x.getTypeName() + ': ' + x.getMessage() + ' -- ' + x.getCause() + ' -- ' + x.getStackTraceString());
         if(sp != null)
             Database.rollback(sp);
         if(x instanceof DmlException) {
