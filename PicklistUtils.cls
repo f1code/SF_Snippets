@@ -1,10 +1,9 @@
-
 public class PicklistUtils {
     /**
      * Build a map of picklist option -> dependent values.
      * 
      * Source: http://titancronus.com/blog/2014/07/03/acquiring-dependent-picklists-in-apex-contd/
-     */
+     */        
     public static Map<String,List<String>> GetDependentOptions(String pObjName, String pControllingFieldName, String pDependentFieldName){
         Map<String,List<String>> objResults = new Map<String,List<String>>();
         //get the string to sobject global map
@@ -102,6 +101,9 @@ public class PicklistUtils {
                 //base 64 numeric starts from 52
                 Base64CharCodes.put(string.valueOf(i), i + 52);
             }
+            // extras
+            Base64CharCodes.put('+', 62);
+            Base64CharCodes.put('/', 63);
         }
        
         /*
@@ -120,6 +122,7 @@ public class PicklistUtils {
             if (bytesBeingUsed <= 1)
                 return results;
             //get the base64bytes
+            System.debug('Got pValidFor: ' + pValidFor);
             for(Integer i=0;i<pValidFor.length();i++){
                 //get currenct character value
                 pBytes.Add((Base64CharCodes.get((pValidFor.Substring(i, i+1)))));
