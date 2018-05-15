@@ -1,0 +1,139 @@
+public class DropboxApiImpl extends OAuth2 implements DropboxApi {
+    public String redirectUrl;
+    private String dropboxUserId;
+    private String dropboxUserEmail;
+    
+    // Client ID, client Secret: from the app config in DB
+    // redirectURL: URL that was used as redirect, this is only important when doing a code validation
+    // accessToken: previously obtained access token
+    // dropboxUserId: user id that was obtained from DB api based on the dropbox user email
+    // dropboxUserEmail: configured email of a DB user that we can use for the user endpoints.  The id will be retrieved when we first 
+    // 	authenticate
+    public DropboxApiImpl(String clientId, String clientSecret, String accessToken, String dropboxUserid, String dropboxUserEmail) {
+        super(accessToken, null, null, 'https://api.dropbox.com/1/oauth2/token', clientId, clientSecret);
+        this.dropboxUserId = dropboxUserId;
+        this.dropboxUserEmail = dropboxUserEmail;        
+    }        
+    
+    // create a DropboxApi instance based on the settings 
+    public static DropboxApiImpl makeInstance() {        
+        Dropbox_Integration_Settings__c[] settings = [select Client_ID__c, Client_Secret__c, Access_Token__c, Dropbox_User_Email__c, Dropbox_User_ID__c from Dropbox_Integration_Settings__c];
+        if(settings.size() != 1) {
+            throw new DropboxProjectException('Missing or duplicate dropbox integration settings');
+        }
+        Dropbox_Integration_Settings__c dis = settings[0];
+        return new DropboxApiImpl(dis.Client_Id__c, dis.Client_Secret__c, dis.Access_Token__c, dis.Dropbox_User_ID__c, dis.Dropbox_User_Email__c);
+    }
+    
+    // Form authorization URL that we need to redirect the user to to get a new token
+    public String getAuthorizationUrl(String settingsId) {
+        String uri = 'https://api.dropbox.com/1/oauth2/authorize?' + 
+            'client_id=' + this.clientId + 
+            '&response_type=code&' + 
+            'redirect_uri=' + EncodingUtil.urlEncode(this.redirectUrl, 'UTF-8') + '&' +
+        	'state=' + EncodingUtil.urlEncode(settingsId, 'UTF-8') + '&' +
+            'redirect_uri=' + EncodingUtil.urlEncode(this.redirectUrl, 'UTF-8');
+            
+        return uri;
+    }
+    
+    // get access token and refresh token for the given auth code
+    // this will populate the accessToken, accessTokenExpires and refreshToken fields
+    public void validateAuthCode(String authCode) {
+        this.getAccessTokenForCode(authCode, this.redirectUrl);   
+        this.dropboxUserId = this.getCurrentUserId();
+    }   
+    
+    public String copyFolder(String source, String destination) {
+        JSONGenerator gen = JSON.createGenerator(true);
+        gen.writeStartObject();
+        gen.writeStringField('from_path', source);
+        gen.writeStringField('to_path', destination);
+        gen.writeBooleanField('allow_shared_folder', true);
+        gen.writeBooleanField('autorename', false);
+        gen.writeEndObject();
+        String body = gen.getAsString();
+        String url = 'https://api.dropboxapi.com/2/files/copy';
+        String response = this.makeApiCall(url, body, 'POST', true);
+        return this.getFieldFromResponse(response, 'id');        
+    }
+    
+    public String shareFolder(String path) {
+        JSONGenerator gen = JSON.createGenerator(true);
+        gen.writeStartObject();
+        gen.writeStringField('path', path);
+        gen.writeStringField('member_policy', 'team');
+        gen.writeStringField('acl_update_policy', 'editors');
+        gen.writeStringField('shared_link_policy', 'members');
+        gen.writeBooleanField('force_async', false);
+        gen.writeEndObject();
+        String body = gen.getAsString();
+        String url = 'https://api.dropboxapi.com/2/sharing/share_folder';        
+        String response = this.makeApiCall(url, body, 'POST', true);
+        return this.getFieldFromResponse(response, 'shared_folder_id');        
+    }
+    
+    public void addShareMembers(String shareFolderId, String[] members) {
+        JSONGenerator gen = JSON.createGenerator(true);
+        gen.writeStartObject();
+        gen.writeStringField('shared_folder_id', shareFolderId);
+        gen.writeFieldName('members');
+        gen.writeStartArray();
+        for(String member: members) {
+            gen.writeStartObject();
+                gen.writeFieldName('member');
+                gen.writeStartObject();
+            		gen.writeStringField('.tag', 'email');
+            		gen.writeStringField('email', member.trim());
+            	gen.writeEndObject();
+                gen.writeFieldName('access_level');
+                gen.writeStartObject();
+            	    gen.writeStringField('.tag', 'editor');
+                gen.writeEndObject();
+            gen.writeEndObject();    
+        }        
+        gen.writeEndArray();
+        gen.writeBooleanField('quiet', false);
+        gen.writeEndObject();
+        
+        String body = gen.getAsString();
+        String url = 'https://api.dropboxapi.com/2/sharing/add_folder_member';        
+        String response = this.makeApiCall(url, body, 'POST', true);
+    }
+        
+    public void saveSettings(String settingsId) {
+        Dropbox_Integration_Settings__c settings = [select Access_Token__c, Dropbox_User_ID__c from Dropbox_Integration_Settings__c where Id=:settingsId];
+        settings.Access_Token__c = this.getAccessToken();
+        settings.Dropbox_User_ID__c = this.dropboxUserId;
+        update settings;
+    }
+    
+    private String getCurrentUserId() {
+		String url = 'https://api.dropboxapi.com/2/team/members/get_info';
+        String body = '{"members": [{".tag": "email","email": "' + this.dropboxUserEmail + '"}]}';
+        String response = this.makeApiCall(url, body, 'POST', true);
+        
+		return this.getFieldFromResponse(response, 'team_member_id');
+    }
+    
+    private String getFieldFromResponse(String response, String fieldName) {
+        JSONParser parser = JSON.createParser(response);
+        while (parser.nextToken() != null) {
+            if ((parser.getCurrentToken() == JSONToken.FIELD_NAME) &&
+                (parser.getText() == fieldName)) {
+                // Get the value.
+                parser.nextToken();
+                return parser.getText();
+            }
+        }
+		throw new DropboxProjectException('Unable to get ' + fieldName + ' from response');
+    }
+    
+    protected override void onPrepareRequest(HttpRequest req, String apiUrl) {
+        if(apiUrl.contains('/files/') || apiUrl.contains('/sharing/')) {
+            // for those calls, we need to pass the user id
+            req.setHeader('Dropbox-API-Select-User', this.dropboxUserId);
+        }        
+    }
+    
+}
