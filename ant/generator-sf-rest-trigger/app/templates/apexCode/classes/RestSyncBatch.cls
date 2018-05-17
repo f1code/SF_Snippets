@@ -34,9 +34,9 @@ public class <%= name %>SyncBatch implements Database.Batchable<sObject>, Databa
                 // the callout logic will be tested separately
                 String projectId;
                 if(create) {
-                    projectId = api.create<%= name %><%= entity %>(entity);
+                    projectId = api.create<%= name %><%= entityName %>(entity);
                 } else {
-                    projectId = api.update<%= name %><%= entity %>(entity);
+                    projectId = api.update<%= name %><%= entityName %>(entity);
                 }
                 <% if(externalIdProperty) { %>
                 entity.externalIdProperty = projectId;

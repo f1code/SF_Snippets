@@ -1,7 +1,7 @@
 @isTest
 public class <%= name %>SyncBatchTest {
     static testMethod void testCreate<%= name %><%= entity %>s() {
-        <%= entity %>TriggerHandler.execute = false;
+        <%= entityName %>TriggerHandler.execute = false;
         <%= entity %> opp = <%= testFactory %>(true);
         <%= name %>SyncBatch batch = new <%= name %>SyncBatch(new <%= entity %>[] { opp }, true, new MockSuccess());
 
@@ -18,8 +18,8 @@ public class <%= name %>SyncBatchTest {
 	}
 
 
-    static testMethod void testUpdate<%= name %><%= entity %>s() {
-        <%= entity %>TriggerHandler.execute = false;
+    static testMethod void testUpdate<%= name %><%= entityName %>s() {
+        <%= entityName %>TriggerHandler.execute = false;
         <%= entity %> opp = <%= testFactory %>(true);
         <% if(externalIdProperty) { %> 
         opp.<%= externalIdProperty %> = '444';
@@ -40,7 +40,7 @@ public class <%= name %>SyncBatchTest {
     }
 
     static testMethod void testLogErrors() {
-        <%= entity %>TriggerHandler.execute = false;
+        <%= entityName %>TriggerHandler.execute = false;
         <%= entity %> opp = <%= testFactory %>(true);
         <%= name %>SyncBatch batch = new <%= name %>SyncBatch(new <%= entity %>[] { opp }, true, new MockFailure());
 
@@ -54,22 +54,22 @@ public class <%= name %>SyncBatchTest {
     }
 
     public class MockSuccess implements <%= name %> {
-        public String create<%= name %><%= entity %>(<%= entity %> opp) {
+        public String create<%= name %><%= entityName %>(<%= entity %> opp) {
             return '123';
         }
 
-        public String update<%= name %><%= entity %>(<%= entity %> opp) {
+        public String update<%= name %><%= entityName %>(<%= entity %> opp) {
             return opp.<%= externalIdProperty || 'Id' %>;
         }
     }
 
 
     public class MockFailure implements <%= name %> {
-        public String create<%= name %><%= entity %>(<%= entity %> opp) {
+        public String create<%= name %><%= entityName %>(<%= entity %> opp) {
             throw new <%= name %>Exception('Failed!');
         }
 
-        public String update<%= name %><%= entity %>(<%= entity %> opp) {
+        public String update<%= name %><%= entityName %>(<%= entity %> opp) {
             throw new <%= name %>Exception('Failed!');
         }
     }

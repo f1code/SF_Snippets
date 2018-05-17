@@ -1,6 +1,6 @@
 @isTest
 public class <%= name %>Test {
-    static testMethod void testCreate<%= name %><%= entity %>() {
+    static testMethod void testCreate<%= name %><%= entityName %>() {
         // don't save!  Or we won't be able to run the callout
         // (there will be an error about uncommitted work pending)
         <%= entity %> opp = <%= testFactory %>(false);
@@ -8,23 +8,23 @@ public class <%= name %>Test {
         Test.startTest();
         Test.setMock(HttpCalloutMock.class, new CreateCalloutMock());
         <%= name %> api = new <%= name %>Impl();
-        String resultId = api.create<%= name %><%= entity %>(opp);
+        String resultId = api.create<%= name %><%= entityName %>(opp);
         Test.stopTest();
 
         System.assertEquals('5733008e487d901208a0a22e', resultId);
     }
 
-    static testMethod void testUpdate<%= name %><%= entity %>() {
+    static testMethod void testUpdate<%= name %><%= entityName %>() {
         // don't save!  Or we won't be able to run the callout
         <%= entity %> opp = <%= testFactory %>(false);
-        <% if(externalPropertyId) { %>
-        opp.<%= externalPropertyId %> = '5733008e487d901208a0a22e';
+        <% if(externalIdProperty) { %>
+        opp.<%= externalIdProperty%> = '5733008e487d901208a0a22e';
         <% } %>
 
         Test.startTest();
         Test.setMock(HttpCalloutMock.class, new UpdateCalloutMock());
         <%= name %> api = new <%= name %>Impl();
-        api.update<%= name %><%= entity %>(opp);
+        api.update<%= name %><%= entityName %>(opp);
         Test.stopTest();
     }
 
@@ -35,7 +35,7 @@ public class <%= name %>Test {
         Test.setMock(HttpCalloutMock.class, new ErrorCalloutMock());
         try {
             <%= name %> api = new <%= name %>Impl();
-        	api.create<%= name %><%= entity %>(opp);
+        	api.create<%= name %><%= entityName %>(opp);
         } catch(<%= name %>Exception x) {
         	Test.stopTest();
             return;

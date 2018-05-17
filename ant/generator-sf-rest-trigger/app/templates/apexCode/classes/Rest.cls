@@ -5,9 +5,9 @@ public interface <%= name %> {
     /**
      * Create a record for the <%= entity %> and return its id on the remote system.
      */
-	String create<%= name %><%= entity %>(<%= entity %> rec);
+	  String create<%= name %><%= entityName %>(<%= entity %> rec);
     /**
      * Locate and update the record
      */
-    String update<%= name %><%= entity %>(<%= entity %> rec);
+    String update<%= name %><%= entityName %>(<%= entity %> rec);
 }
