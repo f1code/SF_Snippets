@@ -1,0 +1,30 @@
+/**
+ * A mock class that can be used in unit tests.
+ */
+public virtual class DropboxApiMock implements DropboxApi {    
+    // Form authorization URL that we need to redirect the user to to get a new token
+    public virtual String getAuthorizationUrl(String settingsId) {
+        return 'getAuthorizationUrl';
+    }
+    
+    public virtual void validateAuthCode(String authCode) {        
+    }
+    
+	// Copy a folder, return the unique folder id (which is not the same as the shared folder id!)    
+    public virtual String copyFolder(String sourcePath, String destinationPath) {
+        return 'copyFolder';
+    }
+    
+    // Share a specified folder and return the shared folder id    
+    public virtual String shareFolder(String folderPath) {
+        return 'shareFolder';
+    }
+    
+    // add members (by email) to a folder that was already shared
+    public virtual void addShareMembers(String shareFolderId, String[] members) {
+    }
+    
+    public virtual void saveSettings(String settingsId) {
+        
+    }
+}

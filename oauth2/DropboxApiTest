@@ -1,0 +1,115 @@
+@isTest
+public class DropboxApiTest {
+    static testMethod void testCopyFolder() {
+        Test.startTest();
+        Test.setMock(HttpCalloutMock.class, new DropboxMock());
+        DropboxApiImpl api = new DropboxApiImpl('clientid', 'clientsecret', 'accesstoken', 'userid', null);
+        String id = api.copyFolder('source', 'destination');
+        Test.stopTest();
+        System.assertEquals('id:4yZm2QPKGwAAAAAAAA6ZgA', id);
+    }
+    
+    static testMethod void testCopyFolderFail() {
+        Test.startTest();
+        Test.setMock(HttpCalloutMock.class, new ErrorCalloutMock());
+        DropboxApiImpl api = new DropboxApiImpl('clientid', 'clientsecret', 'accesstoken', 'userid', null);
+        try {
+        	String id = api.copyFolder('source', 'destination');
+        } catch(OAuth2.ApiException x) {
+            // OK
+            Test.stopTest();
+            return;
+        }
+        System.assert(false, 'Should have thrown exception');
+    }
+    
+    static testMethod void testShareFolder() {
+        Test.startTest();
+        Test.setMock(HttpCalloutMock.class, new DropboxMock());
+        DropboxApiImpl api = new DropboxApiImpl('clientid', 'clientsecret', 'accesstoken', 'userid', null);
+        String id = api.shareFolder('test');
+        Test.stopTest();
+        System.assertEquals('84528192421', id);
+    }
+    
+    static testMethod void testAddShareMembers() {
+        Test.startTest();
+        Test.setMock(HttpCalloutMock.class, new DropboxMock());
+        DropboxApiImpl api = new DropboxApiImpl('clientid', 'clientsecret', 'accesstoken', 'userid', null);
+        api.addShareMembers('shareFolderId', new String[] { 'trstr', '122323'});
+        Test.stopTest();
+    }
+    
+    static testMethod void testMakeInstance() {
+        Dropbox_Integration_Settings__c settings = new Dropbox_Integration_Settings__c(Client_Id__c='test', Client_Secret__c='Test', Dropbox_User_Email__c='test');
+        insert settings;
+        DropboxApi api = DropboxApiImpl.makeInstance();
+        System.assertNotEquals(null, api);
+    }
+    
+    static testmethod void testGetAuthorizationUrl() {
+        DropboxApiImpl api = new DropboxApiImpl('clientid', 'clientsecret', null, null, null);
+        api.redirectUrl = 'http://localhost';
+        String url = api.getAuthorizationUrl('xxx');
+        System.assert(url.contains('client_id=clientid'));
+        System.assert(url.contains('state=xxx'));
+        System.assert(url.contains('redirect_uri=http%3A%2F%2Flocalhost'), 'Redirect URI missing from ' + url);
+    }
+    
+    // ensure the userid is then populated!
+    static testMethod void validateAuthCodeAndSaveSettings() {
+        Dropbox_Integration_Settings__c settings = new Dropbox_Integration_Settings__c(Client_Id__c='test', Client_Secret__c='Test', Dropbox_User_Email__c='test');
+        insert settings;
+        Test.startTest();
+        Test.setMock(HttpCalloutMock.class, new DropboxMock());
+        DropboxApiImpl api = new DropboxApiImpl('clientid', 'clientsecret', null, null, 'test@test.com');
+        api.validateAuthCode('123');
+        api.saveSettings(settings.Id);
+        Test.stopTest();
+        settings = [select Access_Token__c, Dropbox_User_Id__c from Dropbox_Integration_Settings__c where Id=:settings.Id];
+        System.assertEquals('dbmid:AAB0fbqagC4jxfAY0l0YUT-SuEjmgyZNWFY', settings.Dropbox_User_Id__c);
+        System.assertEquals('OurWxbNQ6ywGRopQngc', settings.Access_Token__c);
+    }
+    
+    public class DropboxMock implements HttpCalloutMock {
+        public HttpResponse respond(HttpRequest req) {
+            // Create a fake response
+            HttpResponse res = new HttpResponse();
+            res.setHeader('Content-Type', 'application/json');
+            // copy folder
+            if(req.getMethod() == 'POST' && req.getEndpoint().endsWith('/files/copy')) {
+                System.assertEquals('userid', req.getHeader('Dropbox-API-Select-User'));
+                res.setBody('{".tag": "folder","name": "Testing","path_lower": "/glueportal_project_folders/2017_project_folders/testing","path_display": "/gluePORTAL_Project_Folders/2017_Project_Folders/Testing","id": "id:4yZm2QPKGwAAAAAAAA6ZgA"}');
+                res.setStatusCode(201);
+            } else if(req.getMethod() == 'POST' && req.getEndpoint().endsWith('/sharing/share_folder')) {                
+                System.assertEquals('userid', req.getHeader('Dropbox-API-Select-User'));
+                res.setBody('{    ".tag": "complete",    "access_type": {".tag": "owner"},    "is_inside_team_folder": false, "shared_folder_id": "84528192421"}');
+                res.setStatusCode(200);
+            } else if(req.getMethod() == 'POST' && req.getEndpoint().endsWith('/sharing/add_folder_member')) {                
+                System.assertEquals('userid', req.getHeader('Dropbox-API-Select-User'));
+                res.setBody('');
+                res.setStatusCode(200);
+            } else if(req.getMethod() == 'POST' && req.getEndpoint().endsWith('/oauth2/token')) {
+                res.setBody('{"access_token":"OurWxbNQ6ywGRopQngc"}');
+                res.setStatusCode(200);
+            } else if(req.getMethod() == 'POST' && req.getEndpoint().endsWith('/team/members/get_info')) {
+                System.assert(req.getBody().contains('test@test.com'));
+                res.setBody('[{".tag": "member_info","profile": {"team_member_id": "dbmid:AAB0fbqagC4jxfAY0l0YUT-SuEjmgyZNWFY","account_id": "dbid:AACkTqS0KdOzlWuLREjaF_3qw3PTW1ffxg0"}}]');
+                res.setStatusCode(200);
+            } else {
+                res.setStatusCode(400);
+            }
+            return res;
+        }
+    }
+
+    public class ErrorCalloutMock implements HttpCalloutMock {
+        public HttpResponse respond(HttpRequest req) {
+            // Create a fake response
+            HttpResponse res = new HttpResponse();
+            res.setHeader('Content-Type', 'application/json');
+            res.setStatusCode(400);
+            return res;
+        }
+    }
+}

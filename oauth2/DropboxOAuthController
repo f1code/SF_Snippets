@@ -1,0 +1,52 @@
+// used to set up oauth token
+public class DropboxOAuthController {
+	private Dropbox_Integration_Settings__c settings;
+    // api can be specified during testing to use a mock
+    private DropboxApi api;
+    
+    public DropboxOAuthController(ApexPages.StandardController stdController) {
+        stdController.addFields(new String[] { 'Client_ID__c', 'Client_Secret__c' });
+        this.settings = (Dropbox_Integration_Settings__c)stdController.getRecord();
+    }
+    
+    // constructor used for testing
+    public DropboxOAuthController(Dropbox_Integration_Settings__c settings, DropboxApi api) {
+        this.settings = settings;
+        this.api = api;
+    }
+    
+    public PageReference onLoadPage() {        
+        String code = ApexPages.currentPage().getParameters().get('code');
+        if(code != null) {
+            String settingsId = ApexPages.currentPage().getParameters().get('state');
+            processAuthCode(settingsId, code);
+            return new PageReference('/' + settingsId);
+        } else {
+            DropboxApi client = getClient(); 
+            PageReference authPage = new PageReference(client.getAuthorizationUrl(settings.Id));
+            authPage.setRedirect(true);
+            return authPage;
+        }
+    }
+    
+    private DropboxApi getClient() {
+        if(api != null) 
+            return api;
+        String url = 'https://' + 
+            ApexPages.currentPage().getHeaders().get('Host') + 
+            ApexPages.currentPage().getUrl();
+        url = url.replaceAll('\\?.*', '');
+        DropboxApiImpl client = DropboxApiImpl.makeInstance();
+        client.redirectUrl = url;
+        return client;
+        //return new DropboxApiImpl(settings.Client_ID__c, settings.Client_Secret__c, url, 
+            // do not pass access token or user id since we are trying to reset them!
+          //  null, null, null);
+    }
+    
+    private void processAuthCode(String settingsId, String authCode) {                        
+        DropboxApi client = getClient();
+        client.validateAuthCode(authCode);
+        client.saveSettings(settingsId);                   
+    }
+}

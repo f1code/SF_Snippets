@@ -30,7 +30,7 @@
     <sf:describeMetadata username="${sf.username}" password="${sf.password}" sessionId="${sf.sessionId}" serverurl="${sf.serverurl}" resultFilePath="describe.log"/>
   </target>
   <target name="retrieveMetadata">
-      <sf:retrieve username="${sf.username}" password="${sf.password}" sessionId="${sf.sessionId}" serverurl="${sf.serverurl}" retrieveTarget="retrievedCode" unpackaged="retrievedCode/package.xml"/>
+      <sf:retrieve username="${sf.username}" password="${sf.password}" sessionId="${sf.sessionId}" serverurl="${sf.serverurl}" retrieveTarget="${env.PACKAGE}" unpackaged="${env.PACKAGE}/package.xml"/>
   </target>
   <target name="listMetadata">
     <sf:listMetadata username="${sf.username}" metadataType="ApexClass" password="${sf.password}" sessionId="${sf.sessionId}" serverurl="${sf.serverurl}" resultFilePath="customobjects.log"/>
@@ -40,9 +40,9 @@
   <target name="undeployCode">
     <sf:deploy username="${sf.username}" password="${sf.password}" sessionId="${sf.sessionId}" serverurl="${sf.serverurl}" maxPoll="${sf.maxPoll}" deployRoot="removecodepkg"/>
   </target>
-  <!-- <target name="deployCode"> -->
-  <!--   <sf:deploy username="${sf.username}" password="${sf.password}" sessionId="${sf.sessionId}" serverurl="${sf.serverurl}" maxPoll="${sf.maxPoll}" deployRoot="deployCode" rollbackOnError="true" testLevel="RunLocalTests"/> -->
-  <!-- </target> -->
+  <target name="deployCode">
+    <sf:deploy username="${sf.username}" password="${sf.password}" sessionId="${sf.sessionId}" serverurl="${sf.serverurl}" maxPoll="${sf.maxPoll}" deployRoot="${env.PACKAGE}" rollbackOnError="true" testLevel="RunLocalTests"/>
+  </target>
 
 
 </project>
