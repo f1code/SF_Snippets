@@ -11,13 +11,13 @@
         <members><%= name %>SyncBatcherTest</members>
         <members><%= name %>Test</members>
         <members>IntegrationLogger</members>
-        <members><%= entity %>TriggerHandler</members>
-        <members><%= entity %>TriggerHandlerTest</members>
-        <members><%= entity %>TriggerTest</members>
+        <members><%= entityName %>TriggerHandler</members>
+        <members><%= entityName %>TriggerHandlerTest</members>
+        <members><%= entityName %>TriggerTest</members>
         <name>ApexClass</name>
     </types>
     <types>
-        <members><%= entity %>Trigger</members>
+        <members><%= entityName %>Trigger</members>
         <name>ApexTrigger</name>
     </types>
     <version>36.0</version>

@@ -9,7 +9,7 @@ public class IntegrationLogger {
 
     public void logCreate(String entityId, String externalId) {
         this.addLog(new IntegrationLog__c(
-            <%= entity %>__c = entityId,
+            <%= entityName %>__c = entityId,
             External_Id__c = externalId,
             Sync_Type__c = 'Create',
             Result__c = 'Success'
@@ -18,7 +18,7 @@ public class IntegrationLogger {
 
     public void logUpdate(String entityId, String externalId) {
         this.addLog(new IntegrationLog__c(
-            <%= entity %>__c = entityId,
+            <%= entityName %>__c = entityId,
             External_Id__c = externalId,
             Sync_Type__c = 'Update',
             Result__c = 'Success'
@@ -27,7 +27,7 @@ public class IntegrationLogger {
 
     public void logError(String entityId, String errorMessage) {
         this.addLog(new IntegrationLog__c(
-            <%= entity %>__c = entityId,
+            <%= entityName %>__c = entityId,
             Error_Message__c = errorMessage,
             Result__c = 'Failure'
         ));

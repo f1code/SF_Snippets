@@ -1,6 +1,6 @@
 /**
  * Batch class for <%= name %> integration.
- * This is created by <%= name %>SyncBatcher in the <%= entity %>TriggerHandler class.
+ * This is created by <%= name %>SyncBatcher in the <%= entityName %>TriggerHandler class.
  */
 public class <%= name %>SyncBatch implements Database.Batchable<sObject>, Database.AllowsCallouts {
     private Id[] entityIds;
@@ -39,7 +39,7 @@ public class <%= name %>SyncBatch implements Database.Batchable<sObject>, Databa
                     projectId = api.update<%= name %><%= entityName %>(entity);
                 }
                 <% if(externalIdProperty) { %>
-                entity.externalIdProperty = projectId;
+                entity.<%= externalIdProperty %> = projectId;
                 <% } %>
                 if(create) {
                     logger.logCreate(entity.Id, projectId);

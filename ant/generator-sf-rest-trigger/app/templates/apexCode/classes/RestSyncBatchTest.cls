@@ -13,7 +13,7 @@ public class <%= name %>SyncBatchTest {
         opp = [select Id, <%= externalIdProperty %> from <%= entity %> where Id = :opp.Id];
         System.assertNotEquals(null, opp.<%= externalIdProperty %>);
         <% } %>
-        IntegrationLog__c[] log = [select Id from IntegrationLog__c where <%= entity %>__c = :opp.Id and Result__c = 'Success' and Sync_Type__c = 'Create'];
+        IntegrationLog__c[] log = [select Id from IntegrationLog__c where <%= entityName %>__c = :opp.Id and Result__c = 'Success' and Sync_Type__c = 'Create'];
         System.assertNotEquals(0, log.size(), 'Should have created log');
 	}
 
@@ -35,7 +35,7 @@ public class <%= name %>SyncBatchTest {
         opp = [select Id, <%= externalIdProperty %> from <%= entity %> where Id = :opp.Id];
         System.assertEquals('444', opp.<%= externalIdProperty %>, 'Should not update project id');
         <% } %>
-        IntegrationLog__c[] log = [select Id from IntegrationLog__c where <%= entity %>__c = :opp.Id and Result__c = 'Success' and Sync_Type__c = 'Update'];
+        IntegrationLog__c[] log = [select Id from IntegrationLog__c where <%= entityName %>__c = :opp.Id and Result__c = 'Success' and Sync_Type__c = 'Update'];
         System.assertNotEquals(0, log.size(), 'Should have created log');
     }
 
@@ -48,7 +48,7 @@ public class <%= name %>SyncBatchTest {
         Database.executeBatch(batch);
         Test.stopTest();
 
-        IntegrationLog__c[] log = [select Error_Message__c from IntegrationLog__c where <%= entity %>__c = :opp.Id and Result__c = 'Failure'];
+        IntegrationLog__c[] log = [select Error_Message__c from IntegrationLog__c where <%= entityName %>__c = :opp.Id and Result__c = 'Failure'];
         System.assertNotEquals(0, log.size(), 'Should have created log');
         System.assertNotEquals(null, log.get(0).Error_Message__c);
     }

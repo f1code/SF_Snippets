@@ -7,7 +7,7 @@ public class <%= entityName %>TriggerHandler {
     public static void onAfterInsert(<%= entity %>[] inserted) {
         if(!execute)
             return;
-        batcher.batchCreate<%= name %><%= entity %>s(inserted);
+        batcher.batchCreate(inserted);
     }
 
     public static void onAfterUpdate(<%= entity %>[] updated, Map<Id, <%= entity %>> oldMap) {
@@ -15,11 +15,11 @@ public class <%= entityName %>TriggerHandler {
         for(<%= entity %> opp: updated) {
             <%= entity %> old = (<%= entity %>)oldMap.get(opp.Id);
             // TODO: condition for triggering an update
-            if(TODO)
+            if(true)
                 toUpdate.add(opp);
         }
         if(execute && toUpdate.size() > 0) {
-            batcher.batchUpdate<%= name %><%= entityName %>s(toUpdate);
+            batcher.batchUpdate(toUpdate);
         }
     }
 }

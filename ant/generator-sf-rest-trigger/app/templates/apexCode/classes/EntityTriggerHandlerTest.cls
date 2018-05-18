@@ -2,7 +2,7 @@
 public class <%= entityName %>TriggerHandlerTest {
     static testMethod void testOnAfterInsert() {
         <%= entityName %>TriggerHandler.execute = false;
-        <%= entityName %> entity = <%= testFactory %>(true);
+        <%= entity %> entity = <%= testFactory %>(true);
         <%= entityName %>TriggerHandler.execute = true;
         MockBatcher batcher = new MockBatcher();
         <%= entityName %>TriggerHandler.batcher = batcher;
@@ -15,7 +15,7 @@ public class <%= entityName %>TriggerHandlerTest {
 
     static testMethod void testOnAfterUpdate() {
         <%= entityName %>TriggerHandler.execute = false;
-        <%= entityName %> entity = <%= testFactory %>(true);
+        <%= entity %> entity = <%= testFactory %>(true);
         <%= entityName %>TriggerHandler.execute = true;
         MockBatcher batcher = new MockBatcher();
         <%= entityName %>TriggerHandler.batcher = batcher;
@@ -30,11 +30,11 @@ public class <%= entityName %>TriggerHandlerTest {
         public Integer createCount = 0;
         public Integer updateCount = 0;
 
-        public void batchCreate<%= name %><%= entityName %>s(<%= entity %>[] entities) {
+        public void batchCreate(<%= entity %>[] entities) {
             createCount += entities.size();
         }
 
-        public void batchUpdate<%= name %><%= entityName %>s(<%= entity %>[] entities) {
+        public void batchUpdate(<%= entity %>[] entities) {
             updateCount += entities.size();
         }
     }

@@ -1,5 +1,5 @@
 public interface <%= name %>SyncBatcher {
-	  void batchUpdate(<%= entityName %>[] recs);
+	  void batchUpdate(<%= entity %>[] recs);
     
-    void batchCreate(<%= entityName %>[] recs);
+    void batchCreate(<%= entity %>[] recs);
 }
